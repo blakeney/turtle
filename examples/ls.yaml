@@ -1,0 +1,16 @@
+command: ls
+params:
+    - label: 'Long Listing'
+      flag: '-l'
+      type: boolean
+      default: false
+    - label: 'Timestamp Format'
+      flag: '-D'
+      type: select
+      options:
+          - "'%D %R'"
+          - "'%v %T'"
+    - label: 'Target'
+      flag: ''
+      type: string
+

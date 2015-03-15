@@ -6,17 +6,24 @@ import urwid as ur
 import yaml
 from ui.widgets import *
 
+I_TITLEBAR = 0
+I_BODY = 1
+I_PREVIEW = 2
+I_BUTTONS = 3
+I_OUTPUT = 4
+
 def command_form_from_file(filename):
 	f = open(filename)
 	raw = yaml.safe_load(f)
 	f.close()
 	command = raw['command']
 	params = raw['params']
-	form = CommandForm(command, params)
+	form = CommandForm(raw['title'], command, params)
 	return form
 
 class CommandForm:
-	def __init__(self, command, params=[], env={}, user=''):
+	def __init__(self, title, command, params=[], env={}, user=''):
+		self.title = title
 		self.command = command
 		self.params = params
 		self.env = env
@@ -44,6 +51,7 @@ class FormListBox(ur.ListBox):
 		self.separator = separator
 		self.widget_factory = WidgetFactory(separator)
 		body = ur.SimpleFocusListWalker([
+			ur.AttrWrap(ur.Text(form.title), 'command'),
 			ur.Pile(self._get_widgets()),
 			ur.AttrWrap(ur.Text(''), 'command'),
 			ur.Columns([
@@ -66,26 +74,26 @@ class FormListBox(ur.ListBox):
 	def execute(self, button):
 		self.update()
 		output = subprocess.Popen(str(self.form), shell=True, stdout=subprocess.PIPE).stdout.read()
-		self.body[3].set_text(output)
+		self.body[I_OUTPUT].set_text(output)
 
 	def reset(self, button):
-		[self.body[0][i].reset() for i in range(0, len(self.form))]
-		self.body[3].set_text('')
+		[self.body[I_BODY][i].reset() for i in range(0, len(self.form))]
+		self.body[I_OUTPUT].set_text('')
 		self.update()
 
 	def update(self):
-		self.form.set_values(self.body[0])
-		self.body[1].set_text(str(self.form))
+		self.form.set_values(self.body[I_BODY])
+		self.body[I_PREVIEW].set_text(str(self.form))
 
 	def keypress(self, size, key):
 		key = super(FormListBox, self).keypress(size, key)
-		if self.focus_position == 0:
+		if self.focus_position == I_BODY:
 			if key == 'enter':
 				self.update()
 				if self.focus.focus_position < len(self.form) - 1:
 					self.focus.focus_position += 1
 				else:
-					self.focus_position += 2
+					self.focus_position = I_BUTTONS
 			elif key == 'ctrl d':
 				self.exit()
 			else:

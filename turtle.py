@@ -73,8 +73,10 @@ class FormListBox(ur.ListBox):
 	
 	def execute(self, button):
 		self.update()
-		output = subprocess.Popen(str(self.form), shell=True, stdout=subprocess.PIPE).stdout.read()
-		self.body[I_OUTPUT].set_text(output)
+		proc = subprocess.Popen(str(self.form), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		# TODO: Update output periodically to make more useful for long-running processes
+		output = proc.communicate()
+		self.body[I_OUTPUT].set_text(output[1] + output[0])
 
 	def reset(self, button):
 		[self.body[I_BODY][i].reset() for i in range(0, len(self.form))]
@@ -87,19 +89,35 @@ class FormListBox(ur.ListBox):
 
 	def keypress(self, size, key):
 		key = super(FormListBox, self).keypress(size, key)
-		if self.focus_position == I_BODY:
-			if key == 'enter':
-				self.update()
-				if self.focus.focus_position < len(self.form) - 1:
-					self.focus.focus_position += 1
-				else:
-					self.focus_position = I_BUTTONS
-			elif key == 'ctrl d':
-				self.exit()
-			else:
-				return key
-		else: # TODO: Handle ctrl d outside of form
+		if key == 'ctrl n' or key == 'down':
+			self.focus_position = self.move(1)
+		elif key == 'ctrl p' or key == 'up':
+			self.focus_position = self.move(-1)
+		elif key == 'ctrl d':
+			self.exit()
+		else:
 			return key
+	
+	def move(self, delta):
+		self.update()
+		if self.focus_position == I_BODY:
+			return self._move_helper(self.focus_position, delta, len(self.form), I_BODY, I_BUTTONS)
+		elif self.focus_position == I_BUTTONS:
+			return self._move_helper(self.focus_position, delta, 3, I_BODY, I_BUTTONS)
+		else:
+			return self.focus_position
+	
+	def _move_helper(self, major_index, delta, max_minor_index, prev_major_index, next_major_index):
+		minor_index = self.body[major_index].focus_position
+		if minor_index + delta < 0:
+			self.body[major_index].focus_position = 0
+			return prev_major_index
+		elif minor_index + delta >= max_minor_index:
+			self.body[major_index].focus_position = max_minor_index - 1
+			return next_major_index
+		else:
+			self.body[major_index].focus_position = minor_index + delta
+			return major_index
 
 def __main__():
 	if len(sys.argv) != 2:

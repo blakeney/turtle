@@ -7,7 +7,15 @@ params:
       default: false
     - label: 'Timestamp Format'
       flag: '-D'
-      type: select
+      type: singleselect
+      options:
+          - "'%D %R'"
+          - "'%v %T'"
+      #default: "'%v %T'"
+    - label: 'Multitest'
+      flag: '-T'
+      type: multiselect
+      delimiter: " "
       options:
           - "'%D %R'"
           - "'%v %T'"

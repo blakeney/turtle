@@ -10,8 +10,10 @@ class WidgetFactory:
 			return FreeTextParamWidget(param, self.separator)
 		elif wtype == 'boolean':
 			return BooleanParamWidget(param)
-		elif wtype == 'select':
+		elif wtype == 'singleselect':
 			return SingleChoiceParamWidget(param)
+		elif wtype == 'multiselect':
+			return MultiChoiceParamWidget(param)
 		else:
 			raise ValueError("Unrecognized parameter type %s" % wtype)
 
@@ -41,14 +43,16 @@ class BooleanParamWidget(ParamWidget, ur.CheckBox):
 		else:
 			return None
 
-class SingleChoiceParamWidget(ParamWidget, ur.Pile):
+class ChoiceParamWidget(ParamWidget, ur.Pile):
 	def __init__(self, param):
 		self.length = len(param['options'])
 		self.selection = param.get('default')
 		self.default = param.get('default')
-		self.group = []
-		widget_list = [ur.Text(param['label'])] + [ur.RadioButton(self.group, option, False, self._set_value) for option in param['options']]
-		super(SingleChoiceParamWidget, self).__init__(widget_list, self.default)
+		widget_list = [ur.Text(param['label'])] + self._get_option_subwidgets(param)
+		super(ChoiceParamWidget, self).__init__(widget_list, self.default)
+
+	def _get_option_subwidgets(self, param):
+		raise NotImplementedError
 
 	def __len__(self):
 		return self.length
@@ -61,10 +65,37 @@ class SingleChoiceParamWidget(ParamWidget, ur.Pile):
 				i += 1
 			self.selection = self.default
 
+class SingleChoiceParamWidget(ChoiceParamWidget):
+	def _get_option_subwidgets(self, param):
+		self.group = []
+		return [ur.RadioButton(self.group, option, False, self._set_value) for option in param['options']]
+
 	def get_value(self):
 		return self.selection
 
 	def _set_value(self, button, state):
 		if state:
 			self.selection = button.label
+
+class MultiChoiceParamWidget(ChoiceParamWidget):
+	def _get_option_subwidgets(self, param):
+		self.delimiter = param['delimiter']
+		return [ur.CheckBox(option, False, False, self._set_value) for option in param['options']]
+
+	def get_value(self):
+		if self.selection:
+			return self.delimiter.join(self.selection)
+		else:
+			return None
+
+	def _set_value(self, button, state):
+		if not self.selection:
+			self.selection = []
+		if state:
+			self.selection.append(button.label)
+		else:
+			try:
+				self.selection.remove(button.label)
+			except ValueError:
+				pass
 
